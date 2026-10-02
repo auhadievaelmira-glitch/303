@@ -37,6 +37,14 @@ function App() {
   }, []);
 
   const startQuiz = () => {
+    // Check if quiz was already completed
+    const completed = localStorage.getItem(STORAGE_KEY);
+    if (completed === 'true') {
+      setIsCompleted(true);
+      setState('result');
+      return;
+    }
+
     const trimmedName = studentName.trim();
     if (!trimmedName) {
       setNameError('Аты-жөніңізді жазыңыз!');
