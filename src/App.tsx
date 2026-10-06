@@ -21,7 +21,6 @@ function App() {
   const [savedName, setSavedName] = useState('');
   const [nameError, setNameError] = useState('');
 
-  // Check if quiz was already completed
   useEffect(() => {
     const completed = localStorage.getItem(STORAGE_KEY);
     if (completed === 'true') {
@@ -69,13 +68,11 @@ function App() {
       setScore(newScore);
     }
 
-    // Auto-advance after 1.5 seconds
     setTimeout(() => {
       if (currentQuestion < quizData.length - 1) {
         setCurrentQuestion(currentQuestion + 1);
         setShowExplanation(false);
       } else {
-        // Save completion to localStorage
         localStorage.setItem(STORAGE_KEY, 'true');
         localStorage.setItem(STORAGE_SCORE_KEY, newScore.toString());
         localStorage.setItem(STORAGE_ANSWERS_KEY, JSON.stringify(newAnswers));
@@ -95,7 +92,6 @@ function App() {
 
   const progressPercentage = ((currentQuestion + 1) / quizData.length) * 100;
 
-  // Get current date/time for the result
   const getDateTime = () => {
     const now = new Date();
     const options: Intl.DateTimeFormatOptions = {
@@ -108,7 +104,167 @@ function App() {
     return now.toLocaleDateString('kk-KZ', options);
   };
 
-  // Already completed screen
+  // Word файлға экспорттау
+  const exportToWord = () => {
+    const optionLabels = ['A', 'B', 'C', 'D'];
+    
+    let questionsHtml = '';
+    quizData.forEach((q: Question, idx: number) => {
+      questionsHtml += `
+        <div style="margin-bottom: 20px; page-break-inside: avoid;">
+          <p style="font-weight: bold; font-size: 14px; margin-bottom: 8px;">
+            ${idx + 1}. ${q.question}
+          </p>
+          <table style="width: 100%; border-collapse: collapse;">
+      `;
+      q.options.forEach((opt: string, optIdx: number) => {
+        const isCorrect = optIdx === q.correctAnswer;
+        const userAnswered = selectedAnswers[idx] === optIdx;
+        let bgColor = '#ffffff';
+        let marker = '';
+        
+        if (userAnswered && isCorrect) {
+          bgColor = '#d4edda';
+          marker = ' ✅';
+        } else if (userAnswered && !isCorrect) {
+          bgColor = '#f8d7da';
+          marker = ' ❌';
+        } else if (isCorrect) {
+          bgColor = '#d4edda';
+          marker = ' ✓';
+        }
+        
+        questionsHtml += `
+          <tr>
+            <td style="padding: 6px 12px; background-color: ${bgColor}; border: 1px solid #ddd;">
+              <strong>${optionLabels[optIdx]})</strong> ${opt}${marker}
+            </td>
+          </tr>
+        `;
+      });
+      questionsHtml += `
+          </table>
+          <p style="color: #2563eb; font-size: 12px; margin-top: 6px; font-style: italic;">
+            💡 ${q.explanation}
+          </p>
+        </div>
+      `;
+    });
+
+    const percentage = Math.round((score / quizData.length) * 100);
+    const gradeInfo = getGrade();
+
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Тест нәтижесі - ${savedName}</title>
+          <style>
+            body {
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 14px;
+              line-height: 1.6;
+              color: #000;
+              margin: 40px;
+            }
+            h1 {
+              text-align: center;
+              font-size: 22px;
+              margin-bottom: 5px;
+            }
+            h2 {
+              text-align: center;
+              font-size: 16px;
+              color: #555;
+              font-weight: normal;
+              margin-top: 0;
+              margin-bottom: 30px;
+            }
+            .info-box {
+              background-color: #f0f4ff;
+              border: 1px solid #c3d4f7;
+              padding: 15px;
+              border-radius: 5px;
+              margin-bottom: 20px;
+            }
+            .result-box {
+              background-color: #f8f9fa;
+              border: 2px solid #dee2e6;
+              padding: 20px;
+              border-radius: 5px;
+              text-align: center;
+              margin-bottom: 30px;
+            }
+            .score {
+              font-size: 36px;
+              font-weight: bold;
+              color: #1e3a8a;
+            }
+            .grade {
+              font-size: 20px;
+              font-weight: bold;
+              margin-top: 10px;
+            }
+            table {
+              width: 100%;
+              margin-bottom: 10px;
+            }
+            td {
+              padding: 6px 12px;
+              border: 1px solid #ddd;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Үлкен масштабты түсірістер</h1>
+          <h2>Топографиялық түсірістердің масштабы мен бедер биіктігін таңдау</h2>
+          
+          <div class="info-box">
+            <p><strong>Оқушы:</strong> ${savedName}</p>
+            <p><strong>Тест тапсырған уақыты:</strong> ${getDateTime()}</p>
+            <p><strong>Сұрақтар саны:</strong> ${quizData.length}</p>
+          </div>
+          
+          <div class="result-box">
+            <p class="score">${score} / ${quizData.length}</p>
+            <p style="font-size: 24px; color: #555;">${percentage}%</p>
+            <p class="grade">Баға: ${gradeInfo.grade}</p>
+            <p style="margin-top: 10px;">
+              Дұрыс жауаптар: ${score} | Қате жауаптар: ${quizData.length - score}
+            </p>
+          </div>
+
+          <h2 style="text-align: left; font-size: 18px; font-weight: bold; border-bottom: 2px solid #1e3a8a; padding-bottom: 5px;">
+            Тест сұрақтары мен жауаптар
+          </h2>
+
+          ${questionsHtml}
+
+          <div style="margin-top: 40px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #ddd; padding-top: 15px;">
+            <p>Бұл құжат автоматты түрде жасалды</p>
+            <p>© Топографиялық түсірістер - Интерактивті тест</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff', htmlContent], {
+      type: 'application/msword'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Тест_нәтижесі_${savedName.replace(/\s+/g, '_')}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Result screen
   if (isCompleted && state === 'result') {
     const gradeInfo = getGrade();
     const percentage = Math.round((score / quizData.length) * 100);
@@ -122,7 +278,6 @@ function App() {
               Тест нәтижесі
             </h1>
 
-            {/* Student name */}
             <div className="bg-white/10 rounded-lg sm:rounded-xl py-2 sm:py-3 px-4 sm:px-6 inline-block mb-3 sm:mb-4">
               <p className="text-white/60 text-xs sm:text-sm">Оқушы</p>
               <p className="text-white text-lg sm:text-xl font-bold break-words">{savedName}</p>
@@ -134,7 +289,7 @@ function App() {
               </p>
             </div>
 
-            <div className="bg-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8">
+            <div className="bg-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6">
               <div className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-2">
                 {score}/{quizData.length}
               </div>
@@ -146,25 +301,14 @@ function App() {
               </div>
             </div>
 
-            {/* Progress circle visualization */}
-            <div className="flex justify-center mb-4 sm:mb-6 md:mb-8">
+            <div className="flex justify-center mb-4 sm:mb-6">
               <div className="relative w-32 h-32 sm:w-36 sm:h-36 md:w-40 md:h-40">
                 <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="50%" cy="50%" r="45%" stroke="rgba(255,255,255,0.1)" strokeWidth="10%" fill="none" />
                   <circle
-                    cx="50%"
-                    cy="50%"
-                    r="45%"
-                    stroke="rgba(255,255,255,0.1)"
-                    strokeWidth="10%"
-                    fill="none"
-                  />
-                  <circle
-                    cx="50%"
-                    cy="50%"
-                    r="45%"
+                    cx="50%" cy="50%" r="45%"
                     stroke={percentage >= 60 ? '#10b981' : '#ef4444'}
-                    strokeWidth="10%"
-                    fill="none"
+                    strokeWidth="10%" fill="none"
                     strokeDasharray={`${(percentage / 100) * 283} 283`}
                     strokeLinecap="round"
                   />
@@ -175,19 +319,15 @@ function App() {
               </div>
             </div>
 
-            {/* Answer review */}
-            <div className="bg-white/5 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 md:mb-8">
+            <div className="bg-white/5 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
               <h3 className="text-white font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Сіздің жауаптарыңыз:</h3>
               <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center">
                 {quizData.map((q: Question, idx: number) => (
                   <div
                     key={q.id}
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ${
-                      selectedAnswers[idx] === q.correctAnswer
-                        ? 'bg-green-500 text-white'
-                        : 'bg-red-500 text-white'
+                      selectedAnswers[idx] === q.correctAnswer ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
                     }`}
-                    title={`Сұрақ ${idx + 1}: ${selectedAnswers[idx] === q.correctAnswer ? 'Дұрыс' : 'Қате'}`}
                   >
                     {idx + 1}
                   </div>
@@ -205,28 +345,32 @@ function App() {
               </div>
             </div>
 
-            {/* Detailed answers */}
-            <div className="bg-white/5 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 md:mb-8 text-left max-h-48 sm:max-h-56 md:max-h-60 overflow-y-auto">
+            <div className="bg-white/5 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 text-left max-h-48 sm:max-h-56 md:max-h-60 overflow-y-auto">
               <h3 className="text-white font-semibold mb-2 sm:mb-3 text-sm sm:text-base">Толық жауаптар:</h3>
               <div className="space-y-2 sm:space-y-3">
                 {quizData.map((q: Question, idx: number) => (
                   <div key={q.id} className="border-b border-white/10 pb-2 sm:pb-3 last:border-0">
-                    <p className="text-white/90 text-xs sm:text-sm font-medium mb-1">
-                      {idx + 1}. {q.question}
-                    </p>
+                    <p className="text-white/90 text-xs sm:text-sm font-medium mb-1">{idx + 1}. {q.question}</p>
                     <p className={`text-xs sm:text-sm ${selectedAnswers[idx] === q.correctAnswer ? 'text-green-300' : 'text-red-300'}`}>
                       Сіздің жауабыңыз: {q.options[selectedAnswers[idx]!]}
                     </p>
                     {selectedAnswers[idx] !== q.correctAnswer && (
-                      <p className="text-green-300 text-xs sm:text-sm">
-                        Дұрыс жауап: {q.options[q.correctAnswer]}
-                      </p>
+                      <p className="text-green-300 text-xs sm:text-sm">Дұрыс жауап: {q.options[q.correctAnswer]}</p>
                     )}
                     <p className="text-blue-200 text-[10px] sm:text-xs mt-1">💡 {q.explanation}</p>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Word жүктеу батырмасы */}
+            <button
+              onClick={exportToWord}
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-lg sm:rounded-xl text-sm sm:text-base transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl mb-3 flex items-center justify-center gap-2"
+            >
+              <span className="text-xl sm:text-2xl">📄</span>
+              <span>Word форматында жүктеу (.doc)</span>
+            </button>
 
             <div className="bg-white/5 rounded-lg sm:rounded-xl p-3 sm:p-4">
               <p className="text-white/60 text-xs sm:text-sm">
@@ -239,6 +383,7 @@ function App() {
     );
   }
 
+  // Start screen
   if (state === 'start') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex items-center justify-center p-3 sm:p-4">
@@ -252,7 +397,6 @@ function App() {
               Топографиялық түсірістердің масштабы мен бедер биіктігін таңдау
             </h2>
 
-            {/* Name input */}
             <div className="bg-white/10 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
               <label className="block text-white font-semibold mb-2 sm:mb-3 text-base sm:text-lg text-left">
                 👤 Аты-жөніңізді жазыңыз:
@@ -264,9 +408,7 @@ function App() {
                   setStudentName(e.target.value);
                   if (nameError) setNameError('');
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') startQuiz();
-                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') startQuiz(); }}
                 placeholder="Мысалы: Ахметов Алмас"
                 className={`w-full p-3 sm:p-4 rounded-lg sm:rounded-xl bg-white/10 border-2 text-white placeholder-white/40 text-base sm:text-lg focus:outline-none transition-all duration-300 ${
                   nameError ? 'border-red-400 focus:border-red-400' : 'border-white/20 focus:border-blue-400'
@@ -282,28 +424,21 @@ function App() {
             <div className="bg-white/10 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 text-left">
               <h3 className="text-white font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Тест туралы:</h3>
               <ul className="text-blue-100 space-y-1.5 sm:space-y-2 text-sm sm:text-base">
-                <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> 20 сұрақ
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> 4 нұсқа
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Әр сұраққа түсіндірме беріледі
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Нәтиже бағалау жүйесімен
-                </li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> 20 сұрақ</li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> 4 нұсқа (A, B, C, D)</li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Әр сұраққа түсіндірме беріледі</li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Нәтиже бағалау жүйесімен</li>
+                <li className="flex items-center gap-2"><span className="text-green-400">✓</span> Word форматында жүктеуге болады</li>
               </ul>
               <div className="mt-3 sm:mt-4 bg-red-500/10 border border-red-400/30 rounded-lg p-2.5 sm:p-3">
                 <p className="text-red-200 text-xs sm:text-sm font-medium">
-                  ⚠️ НАЗАР АУДАРЫҢЫЗ: Тестті тек <strong>1 рет</strong> тапсыруға болады! Жауапты өзгерту мүмкін емес.
+                  ⚠️ НАЗАР АУДАРЫҢЫЗ: Тестті тек <strong>1 рет</strong> тапсыруға болады!
                 </p>
               </div>
             </div>
             <button
               onClick={startQuiz}
-              className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3.5 sm:py-4 px-8 sm:px-12 rounded-full text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3.5 sm:py-4 px-8 sm:px-12 rounded-full text-lg sm:text-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
             >
               Тестті бастау 🚀
             </button>
@@ -316,11 +451,11 @@ function App() {
   // Quiz state
   const question: Question = quizData[currentQuestion];
   const isAnswered = selectedAnswers[currentQuestion] !== null;
+  const optionLabels = ['A', 'B', 'C', 'D'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex items-center justify-center p-2 sm:p-4">
       <div className="max-w-3xl w-full">
-        {/* Header */}
         <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2 flex-wrap">
           <div className="text-white/80 text-xs sm:text-sm font-medium truncate max-w-[30%]">
             👤 {savedName}
@@ -330,13 +465,10 @@ function App() {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="text-yellow-300 text-xs sm:text-sm font-medium">⚠️ 1 рет</span>
-            <div className="text-white/80 text-xs sm:text-sm font-medium">
-              ✓{score}
-            </div>
+            <div className="text-white/80 text-xs sm:text-sm font-medium">✓{score}</div>
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="w-full h-2.5 sm:h-3 bg-white/10 rounded-full mb-4 sm:mb-6 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-500 ease-out"
@@ -344,9 +476,7 @@ function App() {
           />
         </div>
 
-        {/* Question card */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl sm:rounded-3xl p-3 sm:p-6 md:p-8 shadow-2xl border border-white/20">
-          {/* Question number badge */}
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <span className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs sm:text-sm font-bold px-3 sm:px-4 py-1 sm:py-1.5 rounded-full">
               #{currentQuestion + 1}
@@ -357,23 +487,18 @@ function App() {
                   ? 'bg-green-500/20 text-green-300'
                   : 'bg-red-500/20 text-red-300'
               }`}>
-                {selectedAnswers[currentQuestion] === question.correctAnswer
-                  ? '✓ Дұрыс'
-                  : '✗ Қате'}
+                {selectedAnswers[currentQuestion] === question.correctAnswer ? '✓ Дұрыс' : '✗ Қате'}
               </span>
             )}
           </div>
 
-          {/* Question text */}
           <h2 className="text-base sm:text-xl md:text-2xl font-semibold text-white mb-4 sm:mb-6 md:mb-8 leading-relaxed">
             {question.question}
           </h2>
 
-          {/* Options */}
           <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
             {question.options.map((option: string, idx: number) => {
               let optionStyle = 'bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/40 text-white';
-              
               if (isAnswered) {
                 if (idx === question.correctAnswer) {
                   optionStyle = 'bg-green-500/20 border-green-400 text-green-100';
@@ -403,7 +528,7 @@ function App() {
                     }`}>
                       {isAnswered && idx === question.correctAnswer ? '✓' : 
                        isAnswered && idx === selectedAnswers[currentQuestion] ? '✗' :
-                       String.fromCharCode(65 + idx)}
+                       optionLabels[idx]}
                     </span>
                     <span className="text-sm sm:text-base md:text-lg">{option}</span>
                   </div>
@@ -412,7 +537,6 @@ function App() {
             })}
           </div>
 
-          {/* Explanation */}
           {showExplanation && (
             <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg sm:rounded-xl p-3 sm:p-5 mb-4 sm:mb-6 animate-fadeIn">
               <div className="flex items-start gap-2 sm:gap-3">
@@ -425,7 +549,6 @@ function App() {
             </div>
           )}
 
-          {/* Info about auto-advance */}
           {isAnswered && currentQuestion < quizData.length - 1 && (
             <div className="text-center text-white/50 text-xs sm:text-sm">
               Келесі сұрақ автоматты түрде ашылады...
@@ -433,7 +556,6 @@ function App() {
           )}
         </div>
 
-        {/* Question progress dots */}
         <div className="mt-4 sm:mt-6 flex flex-wrap gap-1 sm:gap-2 justify-center">
           {quizData.map((q: Question, idx: number) => (
             <div
